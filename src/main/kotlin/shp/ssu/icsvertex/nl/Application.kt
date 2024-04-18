@@ -1,8 +1,10 @@
 package shp.ssu.icsvertex.nl
 
-import io.ktor.server.application.*
+import com.example.plugins.configureDatabases
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
+import io.ktor.server.application.*
+
 import shp.ssu.icsvertex.nl.plugins.*
 
 fun main() {
@@ -10,10 +12,28 @@ fun main() {
         .start(wait = true)
 }
 
+
 fun Application.module() {
     configureSerialization()
     configureDatabases()
     configureHTTP()
     configureSecurity()
     configureRouting()
+
+i
+    transaction {
+        SchemaUtils.createMissingTablesAndColumns(IsKutTestTable)
+
+        IsKutTestTableEntity.new {
+            henk = "hello"
+            herman = "henk"
+        }
+    }
+
+    transaction{
+        IsKutTestTableEntity.find {
+            IsKutTestTable.henk eq "pandabeer"
+            IsKutTestTable.herman eq "Hans"
+        }
+    }
 }
