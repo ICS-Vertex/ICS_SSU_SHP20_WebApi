@@ -1,14 +1,18 @@
 package shp.ssu.icsvertex.nl
 
 import com.example.plugins.configureDatabases
+import io.github.smiley4.ktorswaggerui.SwaggerUI
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.application.*
+import nl.icsvertex.ssu.shp.core.domain.*
+import org.jetbrains.exposed.sql.SchemaUtils
+import org.jetbrains.exposed.sql.transactions.transaction
 
 import shp.ssu.icsvertex.nl.plugins.*
 
 fun main() {
-    embeddedServer(Netty, port = 8080, host = "0.0.0.0", module = Application::module)
+    embeddedServer(Netty, port = System.getenv("PORT").toString().trim().toInt(), host = "0.0.0.0", module = Application::module)
         .start(wait = true)
 }
 
@@ -19,21 +23,14 @@ fun Application.module() {
     configureHTTP()
     configureSecurity()
     configureRouting()
-
-i
-    transaction {
-        SchemaUtils.createMissingTablesAndColumns(IsKutTestTable)
-
-        IsKutTestTableEntity.new {
-            henk = "hello"
-            herman = "henk"
+    install(SwaggerUI) {
+        swagger {
+            swaggerUrl = "${System.getenv("APPPATH")}/dickSwagger"
+        }
+        info {
         }
     }
-
-    transaction{
-        IsKutTestTableEntity.find {
-            IsKutTestTable.henk eq "pandabeer"
-            IsKutTestTable.herman eq "Hans"
-        }
+    transaction {
+        SchemaUtils.createMissingTablesAndColumns(Article, ArticleBarcode, InventoryOrder, InventoryOrderLine, InventoryOrderLineBarcode, InventoryOrderSetting)
     }
 }
