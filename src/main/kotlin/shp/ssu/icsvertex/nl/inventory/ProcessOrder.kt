@@ -4,12 +4,13 @@ import nl.icsvertex.ssu.shp.core.dao.*
 import nl.icsvertex.ssu.shp.core.domain.*
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
+import shp.ssu.icsvertex.nl.exceptions.InventoryOrderInsertException
 import shp.ssu.icsvertex.nl.plugins.convertToLocalDateTimeViaInstant
 import java.time.LocalDateTime
 
-fun nl.icsvertex.ssu.shp.core.models.inventory.InventoryOrder.processInput(): Boolean {
+fun nl.icsvertex.ssu.shp.core.models.inventory.InventoryOrder.processInput(): String {
     val input = this
-    transaction {
+    return transaction {
 
         val inventoryOrderEntity = InventoryOrderEntity.find {
             InventoryOrder.orderNo eq input.orderNo and (InventoryOrder.customerNo eq input.customerNo)
@@ -20,7 +21,7 @@ fun nl.icsvertex.ssu.shp.core.models.inventory.InventoryOrder.processInput(): Bo
                 type = input.type
                 location = input.location
                 locationName = input.locationName
-                requestedEndDateTime = convertToLocalDateTimeViaInstant(input.requestedEndDateTime)
+                requestedEndDateTime = input.requestedEndDateTime.convertToLocalDateTimeViaInstant()
                 externalReference = input.externalReference
                 creationDate = LocalDateTime.now()
                 creationUser = "ProcessInput"
@@ -39,75 +40,13 @@ fun nl.icsvertex.ssu.shp.core.models.inventory.InventoryOrder.processInput(): Bo
         }.firstOrNull()
 
         if (inventoryOrderEntity == null) {
-            return@transaction
+            throw InventoryOrderInsertException("Insert failed miserably")
         }
 
-        for (line in input.lines) {
-            InventoryOrderLineEntity.find {
-                InventoryOrderLine.orderId eq inventoryOrderEntity.recordId.value and (InventoryOrderLine.lineNo eq line.lineNo)
-            }.apply {
-                if (this.empty()) InventoryOrderLineEntity.new {
-                    orderId = inventoryOrderEntity.recordId.value
-                    lineNo = line.lineNo
-                    itemNo = line.itemNo
-                    variantCode = line.variantCode
-                    quantity = line.quantity
-                    quantityHandled = 0.0
-                    whseDocumentNo = line.whseDocumentNo
-                    whseDocumentLineNo = line.whseDocumentLineNo
-                    whseDocumentType = line.whseDocumentType
-                    creationDate = LocalDateTime.now()
-                    creationUser = "ProcessInput"
-                    creationProgram = "Shopscan_Web_Api"
-                    mutationDate = LocalDateTime.now()
-                    mutationUser = "ProcessInput"
-                    mutationProgram = "Shopscan_Web_Api"
-                } else forEach {
-                    it.apply {
-                        itemNo = line.itemNo
-                        variantCode = line.variantCode
-                        quantity = line.quantity
-                        whseDocumentNo = line.whseDocumentNo
-                        whseDocumentLineNo = line.whseDocumentLineNo
-                        whseDocumentType = line.whseDocumentType
-                        mutationDate = LocalDateTime.now()
-                        mutationUser = "ProcessInput"
-                        mutationProgram = "Shopscan_Web_Api"
-                    }
-                }
-            }
-        }
+        val articleMap: LinkedHashMap<String, ArticleEntity> = linkedMapOf()
 
-        for (setting in input.settings) {
-            InventoryOrderSettingEntity.find {
-                InventoryOrderSetting.orderId eq inventoryOrderEntity.recordId.value and
-                        (InventoryOrderSetting.settingCode eq setting.settingCode)
-            }.apply {
-                if (this.empty()) {
-                    InventoryOrderSettingEntity.new {
-                        orderId = inventoryOrderEntity.recordId.value
-                        settingCode = setting.settingCode
-                        settingValue = setting.settingValue
-                        creationDate = LocalDateTime.now()
-                        creationUser = "ProcessInput"
-                        creationProgram = "Shopscan_Web_Api"
-                        mutationDate = LocalDateTime.now()
-                        mutationUser = "ProcessInput"
-                        mutationProgram = "Shopscan_Web_Api"
-                    }
-                } else forEach {
-                    it.apply {
-                        settingValue = setting.settingValue
-                        mutationDate = LocalDateTime.now()
-                        mutationUser = "ProcessInput"
-                        mutationProgram = "Shopscan_Web_Api"
-                    }
-                }
-            }
-        }
-
-        for (article in input.articles) {
-            ArticleEntity.find {
+        input.articles.forEach { article ->
+            val articleEntity = ArticleEntity.find {
                 Article.customerNo eq input.customerNo and
                         (Article.itemNo eq article.itemNo) and
                         (Article.variantCode eq article.variantCode)
@@ -197,61 +136,127 @@ fun nl.icsvertex.ssu.shp.core.models.inventory.InventoryOrder.processInput(): Bo
                         mutationProgram = "Shopscan_Web_Api"
                     }
                 }
+            }.firstOrNull()
 
-            }
-
-            for (loopBarcode in article.barcodes) {
-                ArticleBarcodeEntity.find {
-                    ArticleBarcode.customerNo eq input.customerNo and
-                        (ArticleBarcode.itemNo eq article.itemNo) and
-                        (ArticleBarcode.variantCode eq article.variantCode) and
-                        (ArticleBarcode.barcode eq loopBarcode.barcode) }
-                    .apply {
-                        if (this.empty()){
-                            ArticleBarcodeEntity.new {
-                                customerNo = input.customerNo
-                                itemNo = article.itemNo
-                                variantCode = article.variantCode
-                                barcode = loopBarcode.barcode
-                                barcodeType = loopBarcode.barcodeType
-                                unitOfMeasure = loopBarcode.unitOfMeasure
-                                isUniqueBarcode = loopBarcode.isUniqueBarcode
-                                qtyByUnitOfMeasure = loopBarcode.qtyPerUnitOfMeasure
-                                creationDate = LocalDateTime.now()
-                                creationUser = "ProcessInput"
-                                creationProgram = "Shopscan_Web_Api"
-                                mutationDate = LocalDateTime.now()
-                                mutationUser = "ProcessInput"
-                                mutationProgram = "Shopscan_Web_Api"
-                            }
-                        } else forEach {
-                            var changed = false
-                            if (it.barcodeType != loopBarcode.barcodeType){
-                                changed = true
-                            }
-                            if (!changed && it.unitOfMeasure != loopBarcode.unitOfMeasure){
-                                changed = true
-                            }
-                            if (!changed && it.isUniqueBarcode != loopBarcode.isUniqueBarcode){
-                                changed = true
-                            }
-                            if (!changed && it.qtyByUnitOfMeasure != loopBarcode.qtyPerUnitOfMeasure){
-                                changed = true
-                            }
-                            if (changed) it.apply{
-                                barcodeType = loopBarcode.barcodeType
-                                unitOfMeasure = loopBarcode.unitOfMeasure
-                                isUniqueBarcode = loopBarcode.isUniqueBarcode
-                                qtyByUnitOfMeasure = loopBarcode.qtyPerUnitOfMeasure
-                                mutationDate = LocalDateTime.now()
-                                mutationUser = "ProcessInput"
-                                mutationProgram = "Shopscan_Web_Api"
+            if (articleEntity != null){
+                articleMap.putIfAbsent(articleEntity.itemNo + "~" + articleEntity.variantCode, articleEntity)
+                article.barcodes.forEach { loopBarcode ->
+                    ArticleBarcodeEntity.find {
+                        ArticleBarcode.articleId eq articleEntity.recordId  and
+                                (ArticleBarcode.barcode eq loopBarcode.barcode) }
+                        .apply {
+                            if (this.empty()){
+                                ArticleBarcodeEntity.new {
+                                    articleId = articleEntity
+                                    barcode = loopBarcode.barcode
+                                    barcodeType = loopBarcode.barcodeType
+                                    unitOfMeasure = loopBarcode.unitOfMeasure
+                                    isUniqueBarcode = loopBarcode.isUniqueBarcode
+                                    qtyPerUnitOfMeasure = loopBarcode.qtyPerUnitOfMeasure
+                                    creationDate = LocalDateTime.now()
+                                    creationUser = "ProcessInput"
+                                    creationProgram = "Shopscan_Web_Api"
+                                    mutationDate = LocalDateTime.now()
+                                    mutationUser = "ProcessInput"
+                                    mutationProgram = "Shopscan_Web_Api"
+                                }
+                            } else forEach {
+                                var changed = false
+                                if (it.barcodeType != loopBarcode.barcodeType){
+                                    changed = true
+                                }
+                                if (!changed && it.unitOfMeasure != loopBarcode.unitOfMeasure){
+                                    changed = true
+                                }
+                                if (!changed && it.isUniqueBarcode != loopBarcode.isUniqueBarcode){
+                                    changed = true
+                                }
+                                if (!changed && it.qtyPerUnitOfMeasure != loopBarcode.qtyPerUnitOfMeasure){
+                                    changed = true
+                                }
+                                if (changed) it.apply{
+                                    barcodeType = loopBarcode.barcodeType
+                                    unitOfMeasure = loopBarcode.unitOfMeasure
+                                    isUniqueBarcode = loopBarcode.isUniqueBarcode
+                                    qtyPerUnitOfMeasure = loopBarcode.qtyPerUnitOfMeasure
+                                    mutationDate = LocalDateTime.now()
+                                    mutationUser = "ProcessInput"
+                                    mutationProgram = "Shopscan_Web_Api"
+                                }
                             }
                         }
-                    }
+                }
             }
         }
 
+
+        input.lines.forEach { line ->
+            InventoryOrderLineEntity.find {
+                InventoryOrderLine.orderId eq inventoryOrderEntity.recordId.value and
+                        (InventoryOrderLine.lineNo eq line.lineNo)
+            }.apply {
+                val helpEntity = articleMap[line.itemNo + "~" + line.variantCode]
+                    ?: throw InventoryOrderInsertException("Article in line unknown in database. Check input file")
+                if (this.empty()) InventoryOrderLineEntity.new {
+                    orderId = inventoryOrderEntity
+                    articleId = helpEntity
+                    lineNo = line.lineNo
+                    itemNo = line.itemNo
+                    variantCode = line.variantCode
+                    quantity = line.quantity
+                    quantityHandled = 0.0
+                    whseDocumentNo = line.whseDocumentNo
+                    whseDocumentLineNo = line.whseDocumentLineNo
+                    whseDocumentType = line.whseDocumentType
+                    creationDate = LocalDateTime.now()
+                    creationUser = "ProcessInput"
+                    creationProgram = "Shopscan_Web_Api"
+                    mutationDate = LocalDateTime.now()
+                    mutationUser = "ProcessInput"
+                    mutationProgram = "Shopscan_Web_Api"
+                } else forEach {
+                    it.apply {
+                        itemNo = line.itemNo
+                        variantCode = line.variantCode
+                        quantity = line.quantity
+                        whseDocumentNo = line.whseDocumentNo
+                        whseDocumentLineNo = line.whseDocumentLineNo
+                        whseDocumentType = line.whseDocumentType
+                        mutationDate = LocalDateTime.now()
+                        mutationUser = "ProcessInput"
+                        mutationProgram = "Shopscan_Web_Api"
+                    }
+                }
+            }
+        }
+
+        input.settings.forEach { setting ->
+            InventoryOrderSettingEntity.find {
+                InventoryOrderSetting.orderId eq inventoryOrderEntity.recordId and
+                        (InventoryOrderSetting.settingCode eq setting.settingCode)
+            }.apply {
+                if (this.empty()) {
+                    InventoryOrderSettingEntity.new {
+                        orderId = inventoryOrderEntity
+                        settingCode = setting.settingCode
+                        settingValue = setting.settingValue
+                        creationDate = LocalDateTime.now()
+                        creationUser = "ProcessInput"
+                        creationProgram = "Shopscan_Web_Api"
+                        mutationDate = LocalDateTime.now()
+                        mutationUser = "ProcessInput"
+                        mutationProgram = "Shopscan_Web_Api"
+                    }
+                } else forEach {
+                    it.apply {
+                        settingValue = setting.settingValue
+                        mutationDate = LocalDateTime.now()
+                        mutationUser = "ProcessInput"
+                        mutationProgram = "Shopscan_Web_Api"
+                    }
+                }
+            }
+        }
+        inventoryOrderEntity.orderNo
     }
-    return true
 }

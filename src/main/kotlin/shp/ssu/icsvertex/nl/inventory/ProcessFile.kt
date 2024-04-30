@@ -8,7 +8,7 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 
 
-suspend fun processFiles(input: MultiPartData): Boolean {
+suspend fun processFiles(input: MultiPartData): List<String> = buildList {
     input.forEachPart { file ->
         when (file) {
             is PartData.FileItem -> {
@@ -27,12 +27,14 @@ suspend fun processFiles(input: MultiPartData): Boolean {
                             zipEntry = zipFile.nextEntry
                         }
                     }
-                    inventoryOrder.forEach { it.processInput() }
+                    inventoryOrder.forEach { it.processInput().let { order ->
+                        if (!contains(order))add(order)
+                    } }
                 }
             }
 
             else -> throw BadRequestException("Import failed")
         }
     }
-    return true
+
 }

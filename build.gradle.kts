@@ -8,6 +8,11 @@ plugins {
     id("io.ktor.plugin") version "2.3.10"
     id("org.jetbrains.kotlin.plugin.serialization") version "1.9.23"
 }
+ktor {
+    fatJar{
+        archiveFileName.set("ssu_shp_api.jar")
+    }
+}
 
 group = "shp.ssu.icsvertex.nl"
 version = "0.0.1"
@@ -23,5 +28,5 @@ application {
 dependencies {
     implementation("nl.icsvertex.ktor:ics_core_server:0.0.0.5")
     implementation("nl.icsvertex.ktor:ics_core_exposed:0.0.0.5")
-    implementation("nl.icsvertex.ssu.shp:ssu_shp_core-jvm:0.0.0.23")
+    implementation("nl.icsvertex.ssu.shp:ssu_shp_core-jvm:0.0.0.48")
 }
