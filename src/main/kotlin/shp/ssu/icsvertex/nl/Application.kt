@@ -37,6 +37,8 @@ fun Application.module() {
         }
     }
 
+
+
     transaction {
         SchemaUtils.createMissingTablesAndColumns(Article, ArticleBarcode, InventoryOrder, InventoryOrderLine, InventoryOrderLineBarcode, InventoryOrderSetting)
     }

@@ -8,11 +8,25 @@ import io.ktor.server.response.*
 fun Application.configureHTTP() {
     install(CORS) {
         allowMethod(HttpMethod.Options)
+        allowMethod(HttpMethod.Get)
+        allowMethod(HttpMethod.Post)
         allowMethod(HttpMethod.Put)
         allowMethod(HttpMethod.Delete)
         allowMethod(HttpMethod.Patch)
+
+        allowHeader(HttpHeaders.AccessControlAllowHeaders)
+        allowHeader(HttpHeaders.ContentType)
+        allowHeader(HttpHeaders.AccessControlAllowOrigin)
+        allowHeader(HttpHeaders.Cookie)
+        allowHeader(HttpHeaders.XForwardedProto)
+        allowHeader(HttpHeaders.Connection)
+        allowHeader(HttpHeaders.ContentLength)
         allowHeader(HttpHeaders.Authorization)
-        allowHeader("MyCustomHeader")
-        anyHost() // @TODO: Don't do this in production if possible. Try to limit it.
+        allowHeader(HttpHeaders.Accept)
+        allowHeader(HttpHeaders.AcceptEncoding)
+
+        maxAgeInSeconds = 120
+
+        anyHost()
     }
 }
