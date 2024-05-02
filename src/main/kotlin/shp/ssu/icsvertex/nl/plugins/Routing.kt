@@ -69,7 +69,7 @@ fun Application.configureRouting() {
                     call.respond(getArticles(input))
                 }
             }
-            get("getInventoryOrders", {
+            get("getInventoryOrders/{customerNo}", {
                 tags = listOf("Order")
                 request {
                     pathParameter<String>("customerNo")
@@ -84,7 +84,7 @@ fun Application.configureRouting() {
                 }
 
             }
-            get("getInventoryOrder", {
+            get("getInventoryOrder/{orderNo}/{customerNo}", {
                 tags = listOf("Order")
                 request {
                     pathParameter<String>("orderNo")
