@@ -12,6 +12,7 @@ import io.ktor.server.routing.*
 import nl.icsvertex.ssu.shp.core.dto.ArticleDto
 import nl.icsvertex.ssu.shp.core.dto.InventoryCompleteOrderDto
 import nl.icsvertex.ssu.shp.core.dto.InventoryOrderDto
+import nl.icsvertex.ssu.shp.core.dto.InventoryOrderStatusDto
 import shp.ssu.icsvertex.nl.exceptions.InventoryOrderInsertException
 import shp.ssu.icsvertex.nl.exceptions.InventoryOrderNotFoundException
 import shp.ssu.icsvertex.nl.inventory.*
@@ -36,6 +37,7 @@ fun Application.configureRouting() {
     routing {
         route(System.getenv("APPPATH")) {
             post("importInventory", {
+                tags = listOf("Import")
                 request {
                     multipartBody {
                         mediaType(ContentType.MultiPart.FormData)
@@ -68,6 +70,16 @@ fun Application.configureRouting() {
                 if (input != null){
                     call.respond(getArticles(input))
                 }
+            }
+            get("getInventoryOrderStatuses", {
+                tags = listOf("Status")
+                request {
+                }
+                response{
+                    HttpStatusCode.OK to {body<List<InventoryOrderStatusDto>>()}
+                }
+            }){
+                call.respond(getStatuses())
             }
             get("getInventoryOrders/{customerNo}", {
                 tags = listOf("Order")

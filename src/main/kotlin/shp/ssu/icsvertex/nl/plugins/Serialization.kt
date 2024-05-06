@@ -17,10 +17,5 @@ fun Application.configureSerialization() {
                 contextual(LocalDateTime::class, LocalDateTimeSerializer)
             }
         })
-        gson {
-
-            }
-    }
-    routing {
     }
 }

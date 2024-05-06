@@ -28,5 +28,5 @@ application {
 dependencies {
     implementation("nl.icsvertex.ktor:ics_core_server:0.0.0.5")
     implementation("nl.icsvertex.ktor:ics_core_exposed:0.0.0.5")
-    implementation("nl.icsvertex.ssu.shp:ssu_shp_core-jvm:0.0.0.48")
+    implementation("nl.icsvertex.ssu.shp:ssu_shp_core-jvm:0.0.0.49")
 }
